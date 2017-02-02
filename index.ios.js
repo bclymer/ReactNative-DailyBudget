@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
-import { AppRegistry, Text, TextInput, View, StatusBar } from 'react-native';
+import { AppRegistry, Text, View, StatusBar } from 'react-native';
 import { ListView } from 'realm/react-native';
+import ActionButton from 'react-native-action-button';
 
 const Realm = require('realm');
 
@@ -32,19 +33,41 @@ const TransactionSchema = {
 let realm = new Realm({schema: [BudgetSchema, TransactionSchema]});
 
 class DailyBudget extends Component {
+  constructor(props) {
+    super(props);
+    const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+    this.state = {
+      dataSource: ds.cloneWithRows(ds),
+      items: realm.objects('Budget')
+    };
+
+    realm.objects('Budget').addListener((budgets, changes) => {
+      this.setState({
+        dataSource: this.state.dataSource.cloneWithRows(this.state.items),
+        items: realm.objects('Budget')
+      });
+    });
+  }
+
  render() {
 
-   realm.write(() => {
-     realm.create('Budget', {
-       id: 3
-     });
-   });
-
    return (
-     <View style={{alignItems: 'center'}}>
+     <View style={{flex:1, backgroundColor: '#f3f3f3'}}>
+     <ListView
+          dataSource={this.state.dataSource}
+          renderRow={(rowData) => <Text>{rowData.name}</Text>}
+      />
+      <ActionButton buttonColor="rgba(231,76,60,1)" onPress={() => {
+        realm.write(() => {
+          realm.create('Budget', {
+            id: (realm.objects('Budget').length + 1),
+            name: Math.random().toString(36).substr(2, 5)
+          });
+        });
+      }} />
        <StatusBar hidden />
        <Text>
-         Count of Transactions in Realm: {realm.objects('Budget').length}
+         Count of Transactions in Realm: {this.state.items.length}
        </Text>
      </View>
    );
